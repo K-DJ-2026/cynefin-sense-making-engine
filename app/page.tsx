@@ -59,6 +59,16 @@ type Signal = {
 
 type DomainScores = Record<DomainKey, number>;
 
+type Interpretation = {
+  id: string;
+  scores: DomainScores;
+  dominantDomain: string;
+  rationale: string;
+  evidenceStoryId: string;
+  confidence: number;
+  createdAt: string;
+};
+
 type AiSuggestion = {
   summary: string;
   recommendedType: string;
@@ -171,6 +181,8 @@ const initialScores: DomainScores = {
   chaotic: 6,
   aporetic: 9,
 };
+
+const initialInterpretations: Interpretation[] = [];
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -302,6 +314,7 @@ export default function Home() {
   const [probes, setProbes] = useState<Probe[]>(initialProbes);
   const [signals, setSignals] = useState<Signal[]>(initialSignals);
   const [scores, setScores] = useState<DomainScores>(initialScores);
+  const [interpretations, setInterpretations] = useState<Interpretation[]>(initialInterpretations);
   const [query, setQuery] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
   const [storyNotice, setStoryNotice] = useState("");
@@ -330,6 +343,12 @@ export default function Home() {
     direction: "ambiguous" as SignalDirection,
     strength: 3,
   });
+  const [interpretationDraft, setInterpretationDraft] = useState({
+    rationale: "",
+    evidenceStoryId: initialStories[0]?.id || "",
+    confidence: 3,
+  });
+  const [mappingNotice, setMappingNotice] = useState("");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -340,11 +359,13 @@ export default function Home() {
           probes: Probe[];
           signals: Signal[];
           scores: DomainScores;
+          interpretations?: Interpretation[];
         };
         setStories(parsed.stories);
         setProbes(parsed.probes);
         setSignals(parsed.signals);
         setScores(parsed.scores);
+        setInterpretations(parsed.interpretations || initialInterpretations);
       }
       setIsLoaded(true);
     }, 0);
@@ -356,9 +377,9 @@ export default function Home() {
     if (!isLoaded) return;
     window.localStorage.setItem(
       storageKey,
-      JSON.stringify({ stories, probes, signals, scores }),
+      JSON.stringify({ stories, probes, signals, scores, interpretations }),
     );
-  }, [isLoaded, probes, scores, signals, stories]);
+  }, [interpretations, isLoaded, probes, scores, signals, stories]);
 
   const domainData = useMemo(() => normalize(scores), [scores]);
   const dominantDomain = useMemo(
@@ -384,6 +405,10 @@ export default function Home() {
       return `${item.color} ${previous}% ${previous + item.value}%`;
     })
     .join(", ")})`;
+
+  const selectedEvidenceStory = stories.find(
+    (story) => story.id === interpretationDraft.evidenceStoryId,
+  );
 
   function addStory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -513,7 +538,35 @@ export default function Home() {
     setProbes(initialProbes);
     setSignals(initialSignals);
     setScores(initialScores);
+    setInterpretations(initialInterpretations);
+    setInterpretationDraft({
+      rationale: "",
+      evidenceStoryId: initialStories[0]?.id || "",
+      confidence: 3,
+    });
     window.localStorage.removeItem(storageKey);
+  }
+
+  function saveInterpretation() {
+    if (!interpretationDraft.rationale.trim()) {
+      setMappingNotice("Rationale을 입력해야 해석 로그를 저장할 수 있습니다.");
+      return;
+    }
+
+    setInterpretations((current) => [
+      {
+        id: makeId("interpretation"),
+        scores,
+        dominantDomain: dominantDomain.label,
+        rationale: interpretationDraft.rationale.trim(),
+        evidenceStoryId: interpretationDraft.evidenceStoryId,
+        confidence: interpretationDraft.confidence,
+        createdAt: today(),
+      },
+      ...current,
+    ]);
+    setInterpretationDraft((current) => ({ ...current, rationale: "" }));
+    setMappingNotice("현재 Domain Mapping 해석이 근거와 함께 저장되었습니다.");
   }
 
   return (
@@ -645,6 +698,111 @@ export default function Home() {
                     ? "Complex candidate: design safe-to-fail probes instead of forcing a single action plan."
                     : "Use this distribution as a facilitation prompt, not a fixed diagnosis."}
                 </span>
+              </div>
+
+              <div className="interpretationBox">
+                <div className="boxHeader">
+                  <div>
+                    <p className="eyebrow">Evidence-based interpretation</p>
+                    <h3>근거와 확신도를 남기기</h3>
+                  </div>
+                  <span className="statusPill">Human judgment</span>
+                </div>
+
+                <p className="helperText">
+                  슬라이더 값은 객관적 판정이 아니라 현재 참여자의 해석입니다. 왜 그렇게
+                  보았는지와 어떤 Story를 근거로 삼았는지 함께 저장하세요.
+                </p>
+
+                <div className="formGrid">
+                  <label>
+                    Evidence Story
+                    <select
+                      onChange={(event) =>
+                        setInterpretationDraft((current) => ({
+                          ...current,
+                          evidenceStoryId: event.target.value,
+                        }))
+                      }
+                      value={interpretationDraft.evidenceStoryId}
+                    >
+                      {stories.map((story) => (
+                        <option key={story.id} value={story.id}>
+                          {story.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Confidence: {interpretationDraft.confidence}
+                    <input
+                      max="5"
+                      min="1"
+                      onChange={(event) =>
+                        setInterpretationDraft((current) => ({
+                          ...current,
+                          confidence: Number(event.target.value),
+                        }))
+                      }
+                      type="range"
+                      value={interpretationDraft.confidence}
+                    />
+                  </label>
+                </div>
+
+                <label>
+                  Rationale
+                  <textarea
+                    onChange={(event) =>
+                      setInterpretationDraft((current) => ({
+                        ...current,
+                        rationale: event.target.value,
+                      }))
+                    }
+                    placeholder="왜 이 이슈를 현재 도메인 분포로 해석했나요? 관찰 근거와 반대 가능성을 함께 적어보세요."
+                    value={interpretationDraft.rationale}
+                  />
+                </label>
+
+                {selectedEvidenceStory && (
+                  <div className="evidencePreview">
+                    <strong>{selectedEvidenceStory.type}</strong>
+                    <span>{selectedEvidenceStory.body}</span>
+                  </div>
+                )}
+
+                <button className="primaryButton" onClick={saveInterpretation} type="button">
+                  <BookOpen size={17} />
+                  Save Interpretation
+                </button>
+
+                {mappingNotice && <div className="notice">{mappingNotice}</div>}
+              </div>
+
+              <div className="interpretationLog">
+                <div className="listHeader">
+                  <strong>Interpretation Log</strong>
+                  <span>{interpretations.length} saved</span>
+                </div>
+                {interpretations.length === 0 ? (
+                  <p className="emptyState">아직 저장된 해석 로그가 없습니다.</p>
+                ) : (
+                  interpretations.slice(0, 5).map((entry) => {
+                    const evidence = stories.find((story) => story.id === entry.evidenceStoryId);
+                    return (
+                      <div className="interpretationCard" key={entry.id}>
+                        <div>
+                          <strong>{entry.dominantDomain} candidate</strong>
+                          <span>
+                            confidence {entry.confidence}/5 · {entry.createdAt}
+                          </span>
+                        </div>
+                        <p>{entry.rationale}</p>
+                        <small>Evidence: {evidence?.title || "Story not found"}</small>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </article>
           )}
