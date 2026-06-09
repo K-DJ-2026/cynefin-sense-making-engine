@@ -59,6 +59,13 @@ type Signal = {
 
 type DomainScores = Record<DomainKey, number>;
 
+type AiSuggestion = {
+  summary: string;
+  recommendedType: string;
+  recommendedTags: string;
+  reflectionQuestions: string[];
+};
+
 const storageKey = "cynefin-sense-making-engine-v2";
 
 const domainMeta: Array<{ key: DomainKey; label: string; color: string }> = [
@@ -162,6 +169,41 @@ function normalize(scores: DomainScores) {
   }));
 }
 
+function suggestStoryFields(draft: { title: string; body: string; tags: string }): AiSuggestion {
+  const text = `${draft.title} ${draft.body}`.toLowerCase();
+  const recommendedType =
+    text.includes("고객") || text.includes("customer")
+      ? "Customer Voice"
+      : text.includes("리스크") || text.includes("위험") || text.includes("불안")
+        ? "Risk Signal"
+        : text.includes("기회") || text.includes("opportunity")
+          ? "Opportunity Signal"
+          : "Weak Signal";
+  const tagSet = new Set(
+    [
+      text.includes("ai") || text.includes("자동화") ? "AI" : "",
+      text.includes("고객") || text.includes("customer") ? "CX" : "",
+      text.includes("정책") || text.includes("프로세스") ? "Operation" : "",
+      text.includes("리스크") || text.includes("위험") || text.includes("불안") ? "Risk" : "",
+      text.includes("조직") || text.includes("부서") ? "Organization" : "",
+    ].filter(Boolean),
+  );
+
+  return {
+    summary:
+      draft.body.trim().length > 0
+        ? draft.body.trim().slice(0, 88) + (draft.body.trim().length > 88 ? "..." : "")
+        : "Story 본문을 입력하면 AI Assist가 요약과 질문을 제안합니다.",
+    recommendedType,
+    recommendedTags: draft.tags.trim() || Array.from(tagSet).join(", ") || "Sensemaking",
+    reflectionQuestions: [
+      "이 Story를 다르게 해석할 이해관계자는 누구인가?",
+      "이 현상이 반복된다면 어떤 약한 신호를 더 관찰해야 하는가?",
+      "바로 해결책을 정하기 전에 작게 실험해볼 Probe는 무엇인가?",
+    ],
+  };
+}
+
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewKey>("dashboard");
   const [stories, setStories] = useState<Story[]>(initialStories);
@@ -170,6 +212,8 @@ export default function Home() {
   const [scores, setScores] = useState<DomainScores>(initialScores);
   const [query, setQuery] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [storyNotice, setStoryNotice] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
 
   const [storyDraft, setStoryDraft] = useState({
     type: "Weak Signal",
@@ -247,7 +291,10 @@ export default function Home() {
 
   function addStory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!storyDraft.title.trim() || !storyDraft.body.trim()) return;
+    if (!storyDraft.title.trim() || !storyDraft.body.trim()) {
+      setStoryNotice("Title과 Story 본문을 모두 입력해야 저장됩니다.");
+      return;
+    }
     setStories((current) => [
       {
         id: makeId("story"),
@@ -260,7 +307,25 @@ export default function Home() {
       ...current,
     ]);
     setStoryDraft({ type: "Weak Signal", title: "", body: "", tags: "" });
+    setAiSuggestion(null);
+    setQuery("");
+    setStoryNotice("Story가 저장되었습니다. 아래 Saved Stories 목록 맨 위에 추가됐습니다.");
     setActiveView("stories");
+  }
+
+  function runStoryAiAssist() {
+    if (!storyDraft.title.trim() && !storyDraft.body.trim()) {
+      setStoryNotice("AI Assist를 쓰려면 먼저 Title 또는 Story를 입력하세요.");
+      return;
+    }
+    const suggestion = suggestStoryFields(storyDraft);
+    setAiSuggestion(suggestion);
+    setStoryDraft((current) => ({
+      ...current,
+      type: suggestion.recommendedType,
+      tags: current.tags.trim() || suggestion.recommendedTags,
+    }));
+    setStoryNotice("AI Assist가 유형, 태그, 질문을 제안했습니다. 검토 후 Add Story를 누르세요.");
   }
 
   function addProbe(event: FormEvent<HTMLFormElement>) {
@@ -460,7 +525,15 @@ export default function Home() {
                   <p className="eyebrow">Story Bank</p>
                   <h2>Capture Field Stories</h2>
                 </div>
-                <Sparkles size={22} />
+                <button
+                  aria-label="Run Story AI Assist"
+                  className="aiButton"
+                  onClick={runStoryAiAssist}
+                  type="button"
+                >
+                  <Sparkles size={17} />
+                  AI Assist
+                </button>
               </div>
 
               <form className="form" onSubmit={addStory}>
@@ -516,6 +589,32 @@ export default function Home() {
                   Add Story
                 </button>
               </form>
+
+              {storyNotice && <div className="notice">{storyNotice}</div>}
+
+              {aiSuggestion && (
+                <div className="aiPanel">
+                  <div>
+                    <Sparkles size={18} />
+                    <strong>AI Assist Result</strong>
+                  </div>
+                  <p>{aiSuggestion.summary}</p>
+                  <small>
+                    Suggested type: {aiSuggestion.recommendedType} · Suggested tags:{" "}
+                    {aiSuggestion.recommendedTags}
+                  </small>
+                  <ul>
+                    {aiSuggestion.reflectionQuestions.map((question) => (
+                      <li key={question}>{question}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="listHeader">
+                <strong>Saved Stories</strong>
+                <span>{filteredStories.length} shown</span>
+              </div>
 
               <div className="storyList">
                 {filteredStories.map((story) => (

@@ -310,6 +310,7 @@ h2 {
 }
 
 .iconButton,
+.aiButton,
 .primaryButton,
 .secondaryButton {
   display: inline-flex;
@@ -326,6 +327,14 @@ h2 {
   border: 1px solid var(--line);
   color: var(--ink);
   background: var(--surface);
+}
+
+.aiButton {
+  padding: 0 12px;
+  color: #3f2c84;
+  border: 1px solid rgba(127, 99, 216, 0.32);
+  background: rgba(127, 99, 216, 0.1);
+  font-weight: 900;
 }
 
 .primaryButton,
@@ -445,6 +454,70 @@ input[type="range"] {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(240, 238, 231, 0.52);
+}
+
+.notice {
+  margin-bottom: 12px;
+  padding: 12px 13px;
+  color: #1d6259;
+  border: 1px solid rgba(29, 154, 138, 0.28);
+  border-radius: 8px;
+  background: rgba(29, 154, 138, 0.1);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.aiPanel {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid rgba(127, 99, 216, 0.28);
+  border-radius: 8px;
+  background: rgba(127, 99, 216, 0.08);
+}
+
+.aiPanel > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #3f2c84;
+}
+
+.aiPanel p,
+.aiPanel small,
+.aiPanel ul {
+  margin: 0;
+}
+
+.aiPanel p {
+  line-height: 1.5;
+}
+
+.aiPanel small {
+  color: var(--muted);
+}
+
+.aiPanel ul {
+  display: grid;
+  gap: 5px;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.listHeader span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .formGrid {
