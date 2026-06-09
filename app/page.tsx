@@ -95,6 +95,14 @@ type SignalAiSuggestion = {
   reviewQuestions: string[];
 };
 
+type InterpretationAiSuggestion = {
+  rationale: string;
+  confidence: number;
+  evidenceStoryId: string;
+  caution: string;
+  reviewQuestions: string[];
+};
+
 const storageKey = "cynefin-sense-making-engine-v2";
 
 const domainMeta: Array<{ key: DomainKey; label: string; color: string }> = [
@@ -308,6 +316,38 @@ function suggestSignalFields(
   };
 }
 
+function suggestInterpretationFields(
+  scores: DomainScores,
+  domainData: Array<{ key: DomainKey; label: string; value: number; color: string }>,
+  evidenceStory: Story | undefined,
+  stories: Story[],
+): InterpretationAiSuggestion {
+  const dominant = domainData.reduce((winner, item) =>
+    item.value > winner.value ? item : winner,
+  );
+  const selectedStory = evidenceStory || stories[0];
+  const secondDomain = [...domainData].sort((a, b) => b.value - a.value)[1];
+  const confidence =
+    dominant.value >= 65 ? 4 : dominant.value >= 45 && secondDomain.value <= 25 ? 3 : 2;
+  const rationale = selectedStory
+    ? `현재 "${selectedStory.title}" Story를 근거로 보면 ${dominant.label} 후보가 가장 강합니다. 다만 ${secondDomain.label}도 ${secondDomain.value}%로 함께 보이므로, 이 해석은 확정 판정이 아니라 현재 관찰 가능한 패턴에 대한 가설입니다. ${dominant.label}로 보는 이유는 Story 안에서 원인-결과가 완전히 고정되어 있기보다 이해관계자 해석과 실행 후 신호 관찰이 중요해 보이기 때문입니다.`
+    : `현재 도메인 분포에서는 ${dominant.label} 후보가 가장 강합니다. 근거 Story가 아직 부족하므로 이 해석은 낮은 확신도의 초기 가설로만 기록하는 것이 안전합니다.`;
+
+  return {
+    rationale,
+    confidence,
+    evidenceStoryId: selectedStory?.id || "",
+    caution: `Do not treat ${dominant.label} as a final diagnosis. Treat it as a working interpretation based on the current scores: ${Object.entries(scores)
+      .map(([key, value]) => `${key} ${value}`)
+      .join(", ")}.`,
+    reviewQuestions: [
+      "이 해석과 반대되는 Story나 Signal은 무엇인가?",
+      "다른 역할/부서의 참여자는 이 도메인 분포를 어떻게 다르게 볼 수 있는가?",
+      "이 해석이 맞는지 확인하기 위해 어떤 Probe 또는 Signal을 관찰해야 하는가?",
+    ],
+  };
+}
+
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewKey>("dashboard");
   const [stories, setStories] = useState<Story[]>(initialStories);
@@ -323,6 +363,8 @@ export default function Home() {
   const [probeAiSuggestion, setProbeAiSuggestion] = useState<ProbeAiSuggestion | null>(null);
   const [signalNotice, setSignalNotice] = useState("");
   const [signalAiSuggestion, setSignalAiSuggestion] = useState<SignalAiSuggestion | null>(null);
+  const [interpretationAiSuggestion, setInterpretationAiSuggestion] =
+    useState<InterpretationAiSuggestion | null>(null);
 
   const [storyDraft, setStoryDraft] = useState({
     type: "Weak Signal",
@@ -566,7 +608,24 @@ export default function Home() {
       ...current,
     ]);
     setInterpretationDraft((current) => ({ ...current, rationale: "" }));
+    setInterpretationAiSuggestion(null);
     setMappingNotice("현재 Domain Mapping 해석이 근거와 함께 저장되었습니다.");
+  }
+
+  function runInterpretationAiAssist() {
+    const suggestion = suggestInterpretationFields(
+      scores,
+      domainData,
+      selectedEvidenceStory,
+      stories,
+    );
+    setInterpretationAiSuggestion(suggestion);
+    setInterpretationDraft((current) => ({
+      rationale: current.rationale.trim() || suggestion.rationale,
+      evidenceStoryId: current.evidenceStoryId || suggestion.evidenceStoryId,
+      confidence: suggestion.confidence,
+    }));
+    setMappingNotice("AI Assist가 Rationale, Evidence, Confidence 초안을 제안했습니다.");
   }
 
   return (
@@ -706,7 +765,15 @@ export default function Home() {
                     <p className="eyebrow">Evidence-based interpretation</p>
                     <h3>근거와 확신도를 남기기</h3>
                   </div>
-                  <span className="statusPill">Human judgment</span>
+                  <button
+                    aria-label="Run Domain Interpretation AI Assist"
+                    className="aiButton"
+                    onClick={runInterpretationAiAssist}
+                    type="button"
+                  >
+                    <Sparkles size={17} />
+                    AI Assist
+                  </button>
                 </div>
 
                 <p className="helperText">
@@ -768,6 +835,25 @@ export default function Home() {
                   <div className="evidencePreview">
                     <strong>{selectedEvidenceStory.type}</strong>
                     <span>{selectedEvidenceStory.body}</span>
+                  </div>
+                )}
+
+                {interpretationAiSuggestion && (
+                  <div className="aiPanel">
+                    <div>
+                      <CircleDot size={18} />
+                      <strong>Interpretation AI Assist Result</strong>
+                    </div>
+                    <p>{interpretationAiSuggestion.caution}</p>
+                    <small>
+                      Suggested confidence: {interpretationAiSuggestion.confidence}/5 · Evidence
+                      story selected
+                    </small>
+                    <ul>
+                      {interpretationAiSuggestion.reviewQuestions.map((question) => (
+                        <li key={question}>{question}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
 
