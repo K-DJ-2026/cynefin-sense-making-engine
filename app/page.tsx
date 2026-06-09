@@ -717,53 +717,63 @@ export default function Home() {
                 <span className="statusPill">Candidate · not final</span>
               </div>
 
-              <div className="domainBody">
-                <div className="donut" style={{ background: conic }}>
+              <div className="mappingStep">
+                <div className="stepHeader">
+                  <span>Step 1</span>
                   <div>
-                    <strong>{dominantDomain.value}%</strong>
-                    <span>{dominantDomain.label}</span>
+                    <h3>Domain Mix</h3>
+                    <p>How does this issue feel across Cynefin domains?</p>
                   </div>
                 </div>
-                <div className="legend">
-                  {domainData.map((item) => (
-                    <div className="sliderRow" key={item.key}>
-                      <div className="legendRow">
-                        <span className="swatch" style={{ background: item.color }} />
-                        <span>{item.label}</span>
-                        <strong>{item.value}%</strong>
-                      </div>
-                      <input
-                        aria-label={`${item.label} score`}
-                        max="100"
-                        min="0"
-                        onChange={(event) =>
-                          setScores((current) => ({
-                            ...current,
-                            [item.key]: Number(event.target.value),
-                          }))
-                        }
-                        type="range"
-                        value={scores[item.key]}
-                      />
+
+                <div className="domainBody">
+                  <div className="donut" style={{ background: conic }}>
+                    <div>
+                      <strong>{dominantDomain.value}%</strong>
+                      <span>{dominantDomain.label}</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="legend">
+                    {domainData.map((item) => (
+                      <div className="sliderRow" key={item.key}>
+                        <div className="legendRow">
+                          <span className="swatch" style={{ background: item.color }} />
+                          <span>{item.label}</span>
+                          <strong>{item.value}%</strong>
+                        </div>
+                        <input
+                          aria-label={`${item.label} score`}
+                          max="100"
+                          min="0"
+                          onChange={(event) =>
+                            setScores((current) => ({
+                              ...current,
+                              [item.key]: Number(event.target.value),
+                            }))
+                          }
+                          type="range"
+                          value={scores[item.key]}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="warning">
+                  <AlertTriangle size={18} />
+                  <span>
+                    {dominantDomain.key === "complex"
+                      ? "Complex candidate: design safe-to-fail probes instead of forcing a single action plan."
+                      : "Use this distribution as a facilitation prompt, not a fixed diagnosis."}
+                  </span>
                 </div>
               </div>
 
-              <div className="warning">
-                <AlertTriangle size={18} />
-                <span>
-                  {dominantDomain.key === "complex"
-                    ? "Complex candidate: design safe-to-fail probes instead of forcing a single action plan."
-                    : "Use this distribution as a facilitation prompt, not a fixed diagnosis."}
-                </span>
-              </div>
-
-              <div className="interpretationBox">
+              <div className="mappingStep">
                 <div className="boxHeader">
                   <div>
-                    <p className="eyebrow">Evidence-based interpretation</p>
-                    <h3>근거와 확신도를 남기기</h3>
+                    <p className="eyebrow">Step 2</p>
+                    <h3>Why This Interpretation?</h3>
                   </div>
                   <button
                     aria-label="Run Domain Interpretation AI Assist"
@@ -777,50 +787,28 @@ export default function Home() {
                 </div>
 
                 <p className="helperText">
-                  위 Domain Mapping 슬라이더는 이슈가 각 도메인에 얼마나 가까워 보이는지
-                  나타내는 해석 분포입니다. 아래 Confidence는 그 분포 자체를 바꾸지 않고,
-                  현재 해석을 얼마나 확신하는지만 기록합니다.
+                  근거 Story와 Rationale은 왜 이 Domain Mix로 보았는지를 남기는 공간입니다.
+                  AI Assist는 초안을 만들 뿐, 최종 해석은 사용자가 검토합니다.
                 </p>
 
-                <div className="formGrid">
-                  <label>
-                    Evidence Story
-                    <select
-                      onChange={(event) =>
-                        setInterpretationDraft((current) => ({
-                          ...current,
-                          evidenceStoryId: event.target.value,
-                        }))
-                      }
-                      value={interpretationDraft.evidenceStoryId}
-                    >
-                      {stories.map((story) => (
-                        <option key={story.id} value={story.id}>
-                          {story.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Confidence: {interpretationDraft.confidence}
-                    <input
-                      max="5"
-                      min="1"
-                      onChange={(event) =>
-                        setInterpretationDraft((current) => ({
-                          ...current,
-                          confidence: Number(event.target.value),
-                        }))
-                      }
-                      type="range"
-                      value={interpretationDraft.confidence}
-                    />
-                    <small className="fieldHint">
-                      Confidence는 도메인 비율을 바꾸지 않습니다. 현재 Domain Mapping 해석에
-                      대한 확신도입니다.
-                    </small>
-                  </label>
-                </div>
+                <label>
+                  Evidence Story
+                  <select
+                    onChange={(event) =>
+                      setInterpretationDraft((current) => ({
+                        ...current,
+                        evidenceStoryId: event.target.value,
+                      }))
+                    }
+                    value={interpretationDraft.evidenceStoryId}
+                  >
+                    {stories.map((story) => (
+                      <option key={story.id} value={story.id}>
+                        {story.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
                 <label>
                   Rationale
@@ -861,6 +849,39 @@ export default function Home() {
                     </ul>
                   </div>
                 )}
+              </div>
+
+              <div className="mappingStep confidenceStep">
+                <div className="stepHeader">
+                  <span>Step 3</span>
+                  <div>
+                    <h3>How Sure Are You?</h3>
+                    <p>Confidence records certainty. It does not change the Domain Mix.</p>
+                  </div>
+                </div>
+
+                <div className="confidenceControl">
+                  <strong>{interpretationDraft.confidence}/5</strong>
+                  <label>
+                    Confidence
+                    <input
+                      max="5"
+                      min="1"
+                      onChange={(event) =>
+                        setInterpretationDraft((current) => ({
+                          ...current,
+                          confidence: Number(event.target.value),
+                        }))
+                      }
+                      type="range"
+                      value={interpretationDraft.confidence}
+                    />
+                    <small className="fieldHint">
+                      Confidence는 도메인 비율을 바꾸지 않습니다. 현재 Domain Mapping 해석에
+                      대한 확신도입니다.
+                    </small>
+                  </label>
+                </div>
 
                 <button className="primaryButton" onClick={saveInterpretation} type="button">
                   <BookOpen size={17} />

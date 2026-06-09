@@ -769,7 +769,7 @@ textarea:focus {
   color: var(--complex);
 }
 
-.interpretationBox,
+.mappingStep,
 .interpretationLog {
   display: grid;
   gap: 12px;
@@ -780,11 +780,57 @@ textarea:focus {
   background: rgba(240, 238, 231, 0.46);
 }
 
+.mappingStep {
+  position: relative;
+}
+
+.mappingStep::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 14px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--complex);
+}
+
+.confidenceStep::before {
+  background: var(--aporetic);
+}
+
 .boxHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.stepHeader {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.stepHeader > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.stepHeader p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .helperText,
@@ -821,6 +867,24 @@ textarea:focus {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
+}
+
+.confidenceControl {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.confidenceControl > strong {
+  display: grid;
+  place-items: center;
+  min-height: 76px;
+  color: #724a0e;
+  border: 1px solid rgba(215, 165, 49, 0.4);
+  border-radius: 8px;
+  background: rgba(215, 165, 49, 0.12);
+  font-size: 28px;
 }
 
 .interpretationCard > div {
@@ -897,5 +961,10 @@ textarea:focus {
   .donut {
     width: min(100%, 260px);
     margin: 0 auto;
+  }
+
+  .stepHeader,
+  .confidenceControl {
+    grid-template-columns: 1fr;
   }
 }
