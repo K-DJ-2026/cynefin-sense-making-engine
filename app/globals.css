@@ -36,8 +36,14 @@ body {
 }
 
 button,
-a {
+input,
+select,
+textarea {
   font: inherit;
+}
+
+button {
+  border: 0;
 }
 
 .shell {
@@ -110,19 +116,23 @@ a {
   gap: 6px;
 }
 
-.nav a {
+.nav button {
   display: flex;
   align-items: center;
   gap: 11px;
+  width: 100%;
   min-height: 42px;
   padding: 0 12px;
   color: var(--muted);
+  text-align: left;
   text-decoration: none;
   border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
 }
 
-.nav a.active,
-.nav a:hover {
+.nav button.active,
+.nav button:hover {
   color: var(--text);
   background: var(--surface-strong);
 }
@@ -142,6 +152,22 @@ a {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.ghostButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .workspace {
@@ -196,6 +222,15 @@ h2 {
   background: var(--surface);
 }
 
+.search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+}
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -231,7 +266,7 @@ h2 {
 .metric strong {
   display: block;
   margin-top: 5px;
-  font-size: 31px;
+  font-size: clamp(24px, 2.2vw, 31px);
   line-height: 1;
 }
 
@@ -261,6 +296,19 @@ h2 {
   margin-bottom: 18px;
 }
 
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  color: #1d7c70;
+  border: 1px solid rgba(29, 154, 138, 0.26);
+  border-radius: 999px;
+  background: rgba(29, 154, 138, 0.1);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .iconButton,
 .primaryButton,
 .secondaryButton {
@@ -284,6 +332,7 @@ h2 {
 .secondaryButton {
   padding: 0 13px;
   font-weight: 800;
+  cursor: pointer;
 }
 
 .primaryButton {
@@ -350,6 +399,16 @@ h2 {
   font-size: 14px;
 }
 
+.sliderRow {
+  display: grid;
+  gap: 7px;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--complex);
+}
+
 .swatch {
   width: 14px;
   height: 14px;
@@ -372,12 +431,64 @@ h2 {
 
 .storyList,
 .probeList,
-.signalStack {
+.signalStack,
+.learningList {
   display: grid;
   gap: 11px;
 }
 
+.form {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(240, 238, 231, 0.52);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  outline: 0;
+}
+
+textarea {
+  min-height: 88px;
+  padding-top: 10px;
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(29, 154, 138, 0.58);
+  box-shadow: 0 0 0 3px rgba(29, 154, 138, 0.12);
+}
+
 .story {
+  position: relative;
   padding: 15px;
   border: 1px solid var(--line);
   border-left-width: 5px;
@@ -416,9 +527,33 @@ h2 {
   font-size: 13px;
 }
 
+.story small,
+.probe small,
+.signal small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.deleteButton {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
 .probe {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 140px;
   gap: 10px;
   padding: 14px;
   border: 1px solid var(--line);
@@ -441,12 +576,8 @@ h2 {
   font-size: 13px;
 }
 
-.probe em {
+.probe select {
   align-self: start;
-  color: #1d7c70;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 900;
 }
 
 .progress {
@@ -485,6 +616,33 @@ h2 {
   line-height: 1.45;
 }
 
+.signal p strong,
+.signal p span {
+  display: block;
+}
+
+.signal p span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.signal.positive > div {
+  background: var(--complex);
+}
+
+.signal.negative > div {
+  background: var(--chaotic);
+}
+
+.signal.neutral > div {
+  background: var(--clear);
+}
+
+.signal.ambiguous > div {
+  background: var(--aporetic);
+}
+
 .cockpitPanel {
   display: grid;
   gap: 18px;
@@ -508,6 +666,21 @@ h2 {
   margin-top: 5px;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.learningCard {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.learningCard svg {
+  color: var(--complex);
 }
 
 @media (max-width: 1100px) {
