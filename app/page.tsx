@@ -76,6 +76,15 @@ type ProbeAiSuggestion = {
   reviewQuestions: string[];
 };
 
+type SignalAiSuggestion = {
+  title: string;
+  description: string;
+  direction: SignalDirection;
+  strength: number;
+  source: string;
+  reviewQuestions: string[];
+};
+
 const storageKey = "cynefin-sense-making-engine-v2";
 
 const domainMeta: Array<{ key: DomainKey; label: string; color: string }> = [
@@ -249,6 +258,44 @@ function suggestProbeFields(
   };
 }
 
+function suggestSignalFields(
+  draft: {
+    title: string;
+    description: string;
+    direction: SignalDirection;
+    strength: number;
+  },
+  latestStory: Story | undefined,
+  latestProbe: Probe | undefined,
+  dominantDomain: string,
+): SignalAiSuggestion {
+  const storyTitle = latestStory?.title || "최근 Story";
+  const probeTitle = latestProbe?.title || "현재 Probe";
+  const isRisk =
+    dominantDomain === "Chaotic" ||
+    latestStory?.type === "Risk Signal" ||
+    latestProbe?.status === "Stopped";
+  const direction: SignalDirection = draft.direction !== "ambiguous" ? draft.direction : isRisk ? "negative" : "ambiguous";
+  const strength = draft.strength || (isRisk ? 4 : 3);
+
+  return {
+    title:
+      draft.title.trim() ||
+      `${dominantDomain} 후보 이슈에서 "${storyTitle.slice(0, 24)}" 패턴 관찰`,
+    description:
+      draft.description.trim() ||
+      `최근 Story "${storyTitle}"와 Probe "${probeTitle}"를 함께 보면, 이 신호는 다음 행동을 amplify/dampen/pivot 중 무엇으로 가져갈지 판단하기 위한 관찰 항목입니다.`,
+    direction,
+    strength,
+    source: `Source: ${latestStory ? "latest Story" : "demo context"} · Related probe: ${probeTitle}`,
+    reviewQuestions: [
+      "이 신호는 한 번의 사건인가, 반복되는 패턴인가?",
+      "이 신호를 강화해야 하는가, 축소해야 하는가, 더 관찰해야 하는가?",
+      "어떤 추가 Story나 Probe 결과가 이 해석을 뒤집을 수 있는가?",
+    ],
+  };
+}
+
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewKey>("dashboard");
   const [stories, setStories] = useState<Story[]>(initialStories);
@@ -261,6 +308,8 @@ export default function Home() {
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [probeNotice, setProbeNotice] = useState("");
   const [probeAiSuggestion, setProbeAiSuggestion] = useState<ProbeAiSuggestion | null>(null);
+  const [signalNotice, setSignalNotice] = useState("");
+  const [signalAiSuggestion, setSignalAiSuggestion] = useState<SignalAiSuggestion | null>(null);
 
   const [storyDraft, setStoryDraft] = useState({
     type: "Weak Signal",
@@ -421,7 +470,10 @@ export default function Home() {
 
   function addSignal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!signalDraft.title.trim()) return;
+    if (!signalDraft.title.trim()) {
+      setSignalNotice("Signal title을 입력해야 저장됩니다. AI Assist로 초안을 만들 수 있습니다.");
+      return;
+    }
     setSignals((current) => [
       {
         id: makeId("signal"),
@@ -439,7 +491,21 @@ export default function Home() {
       direction: "ambiguous",
       strength: 3,
     });
+    setSignalAiSuggestion(null);
+    setSignalNotice("Signal이 저장되었습니다. 아래 Recorded Signals 목록 맨 위에 추가됐습니다.");
     setActiveView("signals");
+  }
+
+  function runSignalAiAssist() {
+    const suggestion = suggestSignalFields(signalDraft, stories[0], probes[0], dominantDomain.label);
+    setSignalAiSuggestion(suggestion);
+    setSignalDraft((current) => ({
+      title: current.title.trim() || suggestion.title,
+      description: current.description.trim() || suggestion.description,
+      direction: current.direction !== "ambiguous" ? current.direction : suggestion.direction,
+      strength: suggestion.strength,
+    }));
+    setSignalNotice("AI Assist가 Signal 초안을 제안했습니다. 방향과 강도를 검토한 뒤 Add Signal을 누르세요.");
   }
 
   function resetDemoData() {
@@ -877,7 +943,15 @@ export default function Home() {
                   <p className="eyebrow">Signal Dashboard</p>
                   <h2>Record Emerging Signals</h2>
                 </div>
-                <BrainCircuit size={22} />
+                <button
+                  aria-label="Run Signal AI Assist"
+                  className="aiButton"
+                  onClick={runSignalAiAssist}
+                  type="button"
+                >
+                  <Sparkles size={17} />
+                  AI Assist
+                </button>
               </div>
 
               <form className="form" onSubmit={addSignal}>
@@ -943,6 +1017,32 @@ export default function Home() {
                   Add Signal
                 </button>
               </form>
+
+              {signalNotice && <div className="notice">{signalNotice}</div>}
+
+              {signalAiSuggestion && (
+                <div className="aiPanel">
+                  <div>
+                    <Radar size={18} />
+                    <strong>Signal AI Assist Result</strong>
+                  </div>
+                  <p>{signalAiSuggestion.description}</p>
+                  <small>
+                    {signalAiSuggestion.source} · Direction: {signalAiSuggestion.direction} ·
+                    Strength: {signalAiSuggestion.strength}
+                  </small>
+                  <ul>
+                    {signalAiSuggestion.reviewQuestions.map((question) => (
+                      <li key={question}>{question}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="listHeader">
+                <strong>Recorded Signals</strong>
+                <span>{signals.length} total</span>
+              </div>
 
               <div className="signalStack">
                 {signals.map((signal) => (
