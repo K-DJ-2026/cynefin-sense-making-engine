@@ -66,6 +66,16 @@ type AiSuggestion = {
   reflectionQuestions: string[];
 };
 
+type ProbeAiSuggestion = {
+  title: string;
+  hypothesis: string;
+  owner: string;
+  successSignal: string;
+  failureSignal: string;
+  safetyCheck: string;
+  reviewQuestions: string[];
+};
+
 const storageKey = "cynefin-sense-making-engine-v2";
 
 const domainMeta: Array<{ key: DomainKey; label: string; color: string }> = [
@@ -204,6 +214,41 @@ function suggestStoryFields(draft: { title: string; body: string; tags: string }
   };
 }
 
+function suggestProbeFields(
+  draft: {
+    title: string;
+    hypothesis: string;
+    owner: string;
+    successSignal: string;
+    failureSignal: string;
+  },
+  latestStory: Story | undefined,
+  dominantDomain: string,
+): ProbeAiSuggestion {
+  const sourceTitle = draft.title.trim() || latestStory?.title || "현장 신호 기반 마이크로 실험";
+  const sourceBody = latestStory?.body || "최근 Story와 도메인 후보를 바탕으로 작은 실험을 설계합니다.";
+  const title = draft.title.trim() || `${sourceTitle.slice(0, 34)} 실험`;
+  const hypothesis =
+    draft.hypothesis.trim() ||
+    `If we run a small safe-to-fail test around "${sourceTitle}", then we expect clearer signals about whether this ${dominantDomain} issue should be amplified, dampened, or redesigned.`;
+
+  return {
+    title,
+    hypothesis,
+    owner: draft.owner.trim() || "Facilitator",
+    successSignal:
+      draft.successSignal.trim() || "참여자/고객 행동이 의도한 방향으로 반복 관찰된다.",
+    failureSignal:
+      draft.failureSignal.trim() || "혼란, 저항, 문의, 예외 처리 요청이 빠르게 증가한다.",
+    safetyCheck: `Scope this probe to one team or one customer segment first. Source story: ${sourceBody.slice(0, 90)}${sourceBody.length > 90 ? "..." : ""}`,
+    reviewQuestions: [
+      "이 실험이 실패해도 안전한 최소 범위는 어디까지인가?",
+      "성공 신호와 실패 신호를 언제, 누가, 어떻게 관찰할 것인가?",
+      "이 Probe를 amplify, dampen, stop, pivot 중 무엇으로 판정할 기준은 무엇인가?",
+    ],
+  };
+}
+
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewKey>("dashboard");
   const [stories, setStories] = useState<Story[]>(initialStories);
@@ -214,6 +259,8 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [storyNotice, setStoryNotice] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
+  const [probeNotice, setProbeNotice] = useState("");
+  const [probeAiSuggestion, setProbeAiSuggestion] = useState<ProbeAiSuggestion | null>(null);
 
   const [storyDraft, setStoryDraft] = useState({
     type: "Weak Signal",
@@ -330,7 +377,10 @@ export default function Home() {
 
   function addProbe(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!probeDraft.title.trim() || !probeDraft.hypothesis.trim()) return;
+    if (!probeDraft.title.trim() || !probeDraft.hypothesis.trim()) {
+      setProbeNotice("Probe title과 Hypothesis를 입력해야 저장됩니다. AI Assist로 초안을 만들 수 있습니다.");
+      return;
+    }
     setProbes((current) => [
       {
         id: makeId("probe"),
@@ -351,7 +401,22 @@ export default function Home() {
       successSignal: "",
       failureSignal: "",
     });
+    setProbeAiSuggestion(null);
+    setProbeNotice("Probe가 저장되었습니다. 아래 Safe-to-Fail Experiments 목록 맨 위에 추가됐습니다.");
     setActiveView("probes");
+  }
+
+  function runProbeAiAssist() {
+    const suggestion = suggestProbeFields(probeDraft, stories[0], dominantDomain.label);
+    setProbeAiSuggestion(suggestion);
+    setProbeDraft((current) => ({
+      title: current.title.trim() || suggestion.title,
+      hypothesis: current.hypothesis.trim() || suggestion.hypothesis,
+      owner: current.owner.trim() || suggestion.owner,
+      successSignal: current.successSignal.trim() || suggestion.successSignal,
+      failureSignal: current.failureSignal.trim() || suggestion.failureSignal,
+    }));
+    setProbeNotice("AI Assist가 Probe 초안을 제안했습니다. 안전 조건을 검토한 뒤 Add Probe를 누르세요.");
   }
 
   function addSignal(event: FormEvent<HTMLFormElement>) {
@@ -648,7 +713,15 @@ export default function Home() {
                   <p className="eyebrow">Probe Portfolio</p>
                   <h2>Safe-to-Fail Experiments</h2>
                 </div>
-                <FlaskConical size={22} />
+                <button
+                  aria-label="Run Probe AI Assist"
+                  className="aiButton"
+                  onClick={runProbeAiAssist}
+                  type="button"
+                >
+                  <Sparkles size={17} />
+                  AI Assist
+                </button>
               </div>
 
               <form className="form" onSubmit={addProbe}>
@@ -715,6 +788,33 @@ export default function Home() {
                   Add Probe
                 </button>
               </form>
+
+              {probeNotice && <div className="notice">{probeNotice}</div>}
+
+              {probeAiSuggestion && (
+                <div className="aiPanel">
+                  <div>
+                    <FlaskConical size={18} />
+                    <strong>Probe AI Assist Result</strong>
+                  </div>
+                  <p>{probeAiSuggestion.safetyCheck}</p>
+                  <small>
+                    Owner: {probeAiSuggestion.owner} · Success:{" "}
+                    {probeAiSuggestion.successSignal} · Failure:{" "}
+                    {probeAiSuggestion.failureSignal}
+                  </small>
+                  <ul>
+                    {probeAiSuggestion.reviewQuestions.map((question) => (
+                      <li key={question}>{question}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="listHeader">
+                <strong>Saved Probes</strong>
+                <span>{probes.length} total</span>
+              </div>
 
               <div className="probeList">
                 {probes.map((probe) => (
