@@ -777,8 +777,9 @@ export default function Home() {
                 </div>
 
                 <p className="helperText">
-                  슬라이더 값은 객관적 판정이 아니라 현재 참여자의 해석입니다. 왜 그렇게
-                  보았는지와 어떤 Story를 근거로 삼았는지 함께 저장하세요.
+                  위 Domain Mapping 슬라이더는 이슈가 각 도메인에 얼마나 가까워 보이는지
+                  나타내는 해석 분포입니다. 아래 Confidence는 그 분포 자체를 바꾸지 않고,
+                  현재 해석을 얼마나 확신하는지만 기록합니다.
                 </p>
 
                 <div className="formGrid">
@@ -814,6 +815,10 @@ export default function Home() {
                       type="range"
                       value={interpretationDraft.confidence}
                     />
+                    <small className="fieldHint">
+                      Confidence는 도메인 비율을 바꾸지 않습니다. 현재 Domain Mapping 해석에
+                      대한 확신도입니다.
+                    </small>
                   </label>
                 </div>
 
