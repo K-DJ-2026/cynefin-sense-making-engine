@@ -15,6 +15,31 @@ Sense-Making Engine
 - Complex 문제는 분석보다 실험 포트폴리오로 다룬다.
 - 모든 판단과 실험은 학습 기록으로 남긴다.
 
+## 0.1 MVP 구현 업데이트 (2026-06-10)
+
+현재 배포 가능한 MVP는 전체 제품 비전 중 핵심 sense-making 흐름을 우선 구현한다. 범위는 Story Bank, Cynefin Map, Probe Portfolio, Signal Dashboard, Learning Memory 중심이며, 사용자가 브라우저에서 바로 테스트할 수 있도록 Next.js 기반 단일 Web App으로 제공한다.
+
+### 현재 구현된 핵심 흐름
+1. Story Bank에서 현장 관찰과 이야기를 수집한다.
+2. Cynefin Map에서 이슈의 도메인 분포를 3단계로 해석한다.
+3. Evidence-based Interpretation에 근거와 판단 이유를 남긴다.
+4. Confidence Check로 판단 신뢰도를 별도 기록한다.
+5. Probe Portfolio에서 Safe-to-Fail Experiment를 설계한다.
+6. Signal Dashboard에서 실험 또는 현장의 변화 신호를 추적한다.
+7. Learning Memory에서 축적된 입력과 학습 흐름을 확인한다.
+
+### MVP 저장 방식
+- 현재 MVP는 별도 백엔드 없이 브라우저 `localStorage`에 데이터를 저장한다.
+- 같은 브라우저에서는 새로고침 후에도 입력 내용이 유지된다.
+- 다른 브라우저, 다른 기기, 시크릿 모드에서는 데이터가 공유되지 않는다.
+- 정식 제품 단계에서는 데이터베이스, 인증, 조직/워크스페이스 권한 체계가 필요하다.
+
+### MVP AI Assist 범위
+- Story, Domain Interpretation, Probe, Signal 입력 영역에 AI Assist를 제공한다.
+- 현재 AI Assist는 프론트엔드 규칙 기반 보조 기능이다.
+- 외부 LLM API를 호출하지 않으며, 사용자가 최종 내용을 검토하고 저장해야 한다.
+- AI Assist는 도메인 확정, 의사결정 승인, 리스크 판단을 대신하지 않는다.
+
 ---
 
 # 1. 공통 기능
@@ -210,6 +235,28 @@ Sense-Making Engine
 AI 요약은 원문을 대체하지 않는다.
 UI에는 항상 “AI-generated summary” 라벨을 표시한다.
 
+## 3.4 Story Capture AI Assist (MVP)
+
+### 목적
+사용자가 현장 이야기를 입력할 때 제목, 관찰 내용, 이해관계자, 약한 신호, 후속 질문을 빠르게 구조화하도록 돕는다.
+
+### 입력값
+- raw_story_text
+- optional_context
+
+### 출력값
+- suggested_title
+- refined_story_body
+- suggested_tags
+- extracted_stakeholders
+- weak_signal_hint
+- follow_up_questions
+
+### 동작 원칙
+- 사용자가 입력한 원문을 삭제하지 않는다.
+- AI Assist 결과는 입력 필드에 반영되지만, 저장은 사용자가 명시적으로 수행한다.
+- 저장 완료, 입력 부족, 삭제 완료 등 주요 행동은 UI 피드백으로 알려준다.
+
 ---
 
 # 4. Module 2: Signification Studio
@@ -369,6 +416,30 @@ Story 또는 워크숍 토론에서 도출된 핵심 이슈 생성.
 ### 중요 제한
 시스템은 `dominant_domain_candidate`를 제안할 수 있지만, “확정 도메인”으로 표시하지 않는다.
 
+### MVP UX 구조
+현재 MVP의 Cynefin Map은 다음 3단계로 구성한다.
+
+1. **Domain Mix**: Clear, Complicated, Complex, Chaotic, Aporetic 비율을 조정한다.
+2. **Evidence-based Interpretation**: 관련 스토리, 관찰 근거, 해석 이유를 작성한다.
+3. **Confidence Check**: 현재 해석에 대한 신뢰도를 별도 수치로 기록한다.
+
+### Confidence 처리 기준
+- Confidence는 도메인 분포를 자동 변경하지 않는다.
+- Confidence는 “현재 해석을 얼마나 믿을 수 있는가”에 대한 메타 판단이다.
+- 낮은 Confidence는 추가 스토리 수집, 반대 사례 탐색, Probe 설계를 촉발하는 신호로 사용한다.
+- 높은 Confidence라도 도메인 확정을 의미하지 않는다.
+
+### Evidence 기반 산출 기준
+도메인 분포는 다음 근거를 종합해 사용자가 조정한다.
+
+- Story Bank에 축적된 현장 이야기
+- 이해관계자 간 해석 차이
+- 반복적으로 등장하는 패턴 또는 예외 사례
+- 원인-결과 관계의 명확성
+- 전문가 분석 가능성
+- 실험이 필요한 불확실성
+- 즉각 안정화가 필요한 위기 신호
+
 ---
 
 ## 5.3 집단 도메인 분포 계산
@@ -422,6 +493,32 @@ Story 또는 워크숍 토론에서 도출된 핵심 이슈 생성.
 ### 예외 처리
 - 도메인 분포 없음: `DOMAIN_MAPPING_REQUIRED`
 - 극단적 분산: `HIGH_POLARIZATION_REQUIRES_FACILITATOR_REVIEW`
+
+## 5.5 Interpretation Log (MVP)
+
+### 목적
+Cynefin 도메인 해석이 단순한 슬라이더 조작으로 끝나지 않도록, 근거와 판단 이유를 시간순 기록으로 남긴다.
+
+### 입력값
+- issue_id
+- related_story_id optional
+- domain_scores
+- dominant_domain_candidate
+- rationale
+- confidence_level
+- generated_by_ai_assist: boolean
+
+### 출력값
+- interpretation_id
+- saved_at
+- evidence_summary
+- confidence_level
+- domain_snapshot
+
+### UX 원칙
+- 사용자는 Domain Mix 조정 후 반드시 해석 근거를 남길 수 있어야 한다.
+- 저장된 Interpretation Log는 이후 Probe 설계와 Signal 해석의 근거로 재사용된다.
+- 기존 해석을 덮어쓰기보다 새 기록으로 축적하는 방식을 우선한다.
 
 ---
 
@@ -1074,6 +1171,70 @@ AI는 “편향 확정”이 아니라 “가능성”으로만 표시한다.
 - Complex 비율 낮음: 경고 표시 후 추천 가능
 - 데이터 부족: `INSUFFICIENT_CONTEXT_FOR_PROBE_IDEATION`
 
+### MVP 구현
+- Probe Portfolio의 Capture Field Stories와 유사한 AI Assist 버튼을 제공한다.
+- 사용자가 입력한 이슈, 가설, 타깃, 기대 신호를 바탕으로 Safe-to-Fail 실험 초안을 제안한다.
+- 제안 결과는 사용자가 수정한 뒤 저장한다.
+
+## 12.4 Domain Interpretation AI Assist (MVP)
+
+### 목적
+사용자가 Cynefin 도메인 분포와 관련 스토리를 해석할 때 근거 기반 설명을 빠르게 작성하도록 돕는다.
+
+### 입력값
+- domain_scores
+- selected_story optional
+- issue_context
+- confidence_level
+
+### 출력값
+- rationale_draft
+- evidence_points
+- uncertainty_notes
+- suggested_next_probe
+
+### 제한
+- AI Assist는 도메인 분포를 자동 확정하지 않는다.
+- Confidence 값을 바꾸더라도 도메인 분포는 자동 변경되지 않는다.
+- 사용자가 저장해야 Interpretation Log에 반영된다.
+
+## 12.5 Signal Recording AI Assist (MVP)
+
+### 목적
+약한 신호나 실험 결과를 명확한 Signal 기록으로 정리하도록 돕는다.
+
+### 입력값
+- raw_signal_text
+- related_probe optional
+- observed_change
+
+### 출력값
+- signal_title
+- signal_description
+- suggested_direction
+- suggested_strength
+- implication
+- follow_up_question
+
+### 제한
+- Signal의 방향과 강도는 추천값이며 사용자가 조정할 수 있다.
+- 단일 신호만으로 패턴을 확정하지 않는다.
+
+## 12.6 Story Capture AI Assist (MVP)
+
+### 목적
+현장 이야기 입력 시 관찰, 해석, 후속 질문을 구분해 기록 품질을 높인다.
+
+### 입력값
+- raw_story_text
+
+### 출력값
+- structured_story
+- suggested_title
+- possible_tags
+- stakeholder_hint
+- weak_signal_hint
+
 ---
 
 # 13. 데이터 모델 초안
@@ -1135,8 +1296,24 @@ AI는 “편향 확정”이 아니라 “가능성”으로만 표시한다.
 - issue_id
 - user_id
 - domain_scores
+- normalized_domain_distribution
+- dominant_domain_candidate
 - rationale
 - confidence_level
+- related_story_id optional
+- created_at
+
+## InterpretationLog
+- id
+- issue_id
+- domain_mapping_id optional
+- related_story_id optional
+- domain_snapshot
+- dominant_domain_candidate
+- rationale
+- confidence_level
+- generated_by_ai_assist
+- created_at
 
 ## Constraint
 - id
@@ -1230,6 +1407,8 @@ AI는 “편향 확정”이 아니라 “가능성”으로만 표시한다.
 - POST /issues/:id/domain-mappings
 - GET /issues/:id/domain-distribution
 - GET /issues/:id/action-posture
+- POST /issues/:id/interpretations
+- GET /issues/:id/interpretations
 
 ## Constraint
 - POST /issues/:id/constraints
@@ -1275,6 +1454,17 @@ AI는 “편향 확정”이 아니라 “가능성”으로만 표시한다.
 8. Signal 수동 입력
 9. Leadership Dashboard 기본형
 10. Learning Entry
+
+### 현재 MVP 반영 상태 (2026-06-10)
+- 구현됨: Story Bank 입력/저장/검색/삭제
+- 구현됨: Story Capture AI Assist
+- 구현됨: 3단계 Cynefin Domain Mapping
+- 구현됨: Evidence-based Interpretation 및 Interpretation Log
+- 구현됨: Domain Interpretation AI Assist
+- 구현됨: Probe Portfolio 및 Probe AI Assist
+- 구현됨: Signal Dashboard 및 Signal AI Assist
+- 구현됨: Learning Memory 기본 뷰
+- 보류됨: Auth, 서버 DB, 다중 사용자 권한, 실시간 Workshop Mode
 
 ## MVP 1차 제외 가능
 - Voice to Story
